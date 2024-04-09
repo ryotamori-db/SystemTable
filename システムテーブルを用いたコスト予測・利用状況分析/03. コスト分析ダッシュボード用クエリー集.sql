@@ -2,9 +2,14 @@
 -- MAGIC %md-sandbox
 -- MAGIC # コスト分析ダッシュボード用クエリー集
 -- MAGIC このノートブックは、コスト分析ダッシュボード用のクエリーをまとめたものです。  
--- MAGIC **dndemosでダッシュボードをインストールできない方向けのノートブックになります**
+-- MAGIC **dndemosでダッシュボードをインストールできない方向けのノートブックになります**  
 -- MAGIC
--- MAGIC <img src="https://github.com/databricks-demos/dbdemos-resources/blob/main/images/product/uc/system_tables/uc-system-tables-flow.png?raw=true">
+-- MAGIC 適宜以下クエリーをSQLエディタで編集&保存してください。  
+-- MAGIC **・編集イメージ**  
+-- MAGIC <img src="https://github.com/ryotamori-db/SystemTable/blob/main/images/saveimages1.png?raw=true" width="1000px">  
+-- MAGIC
+-- MAGIC **・保存イメージ**  
+-- MAGIC <img src="https://github.com/ryotamori-db/SystemTable/blob/main/images/saveimages2.png?raw=true" width="1000px">  
 
 -- COMMAND ----------
 
@@ -20,8 +25,6 @@ SELECT CONCAT(start_date, ' | ', label) FROM (
   SELECT add_months(DATE_TRUNC('MONTH', CURRENT_DATE()), -12)  as current_date, 'Last 12 Months' as label, 4 as o
   )
 order by o );
-
-
 
 -- COMMAND ----------
 
