@@ -1,0 +1,811 @@
+{
+  "datasets": [
+    {
+      "name": "1de0d444",
+      "displayName": "Table count",
+      "query": "SELECT  count(DISTINCT table_catalog) AS catalog_count,\n        count(DISTINCT concat(table_catalog, table_schema)) AS schema_count,\n        count(DISTINCT concat(table_catalog, table_schema, table_name)) AS table_count\nFROM\n    system.information_schema.tables\nWHERE\n    table_type != 'VIEW'\n    AND table_schema NOT IN ('information_schema')"
+    },
+    {
+      "name": "1ff5a053",
+      "displayName": "training date check",
+      "query": "select datediff(current_date(), training_date) as days_since_last_training, training_date, 0 as target from (SELECT max(training_date) as training_date from `main`.`billing_forecast`.billing_forecast)\n\n\n"
+    },
+    {
+      "name": "2ff8c6ed",
+      "displayName": "Table format",
+      "query": "-- Dashboard Name: DBSQL Governance Dashboard\n-- Report Name: Tables by Format\n-- Query Name: dbsql-table-formats\nSELECT\n    table_catalog AS cat_name,\n    table_schema AS sch_name,\n    data_source_format AS table_format,\n    COUNT(*) AS table_count\nFROM\n    system.information_schema.tables\nWHERE\n    table_type != 'VIEW'\n    AND table_schema NOT IN ('information_schema')\nGROUP BY\n    cat_name,\n    sch_name,\n    table_format \nORDER BY\n    table_count DESC"
+    },
+    {
+      "name": "45be5d04",
+      "displayName": "Total consumption",
+      "query": "WITH \n-- This makes sure we don't have gap (days without consumption) by creating 1 dataframe containing 1 row per day and then joining it to the actual billing.\nnumbers AS (\n  SELECT ROW_NUMBER() OVER (PARTITION BY 0 ORDER BY ds)  AS num\n  FROM `main`.`billing_forecast`.billing_forecast\n  LIMIT abs(datediff(add_months(CURRENT_DATE(), -3), add_months(CURRENT_DATE(), 3)))\n),\nskus AS (\n  SELECT distinct(sku) as sku FROM `main`.`billing_forecast`.billing_forecast where sku != 'ALL'\n),\ndays as (select date_add(add_months(CURRENT_DATE(), 3), -num) as date, sku FROM numbers cross join skus),\nf as (SELECT * FROM `main`.`billing_forecast`.detailed_billing_forecast  \n-- where workspace_id='{{ workspace_id }}' \n),\ncum as (\n  SELECT *, SUM(list_cost) OVER (PARTITION BY sku ORDER BY date) AS cum_list_cost FROM (\n    select days.sku, days.date, coalesce(f.list_cost, 0) as list_cost FROM days left join f on f.date = days.date and f.sku=days.sku )\n    where sku != 'ALL' )\nSELECT * from cum\n-- -- Add a vertical bar on current date to highlight forecast\n-- UNION\n--   SELECT 'Today' as sku, NOW() as date, sum(cum.cum_list_cost)*1.4 as list_cost, sum(cum.cum_list_cost)*1.4 as cum_list_cost \n--     from cum where date=CURRENT_DATE() \n-- order by sku asc \n;"
+    },
+    {
+      "name": "6234253c",
+      "displayName": "Table creation",
+      "query": "-- Dashboard Name: DBSQL Governance Dashboard\n-- Report Name: Table Types by Created Mont\n-- Query Name: dbsql-table-types\nSELECT\n    table_catalog,\n    table_schema,\n    table_type,\n    DATE_TRUNC('month', created) AS month_created,\n    COUNT(*) AS table_count\nFROM\n    system.information_schema.tables\nWHERE\n    table_schema NOT IN ('information_schema')\nGROUP BY\n    table_catalog,\n    table_schema,\n    DATE_TRUNC('month', created),\n    table_type\nORDER BY\n    month_created ASC,\n    table_count DESC"
+    },
+    {
+      "name": "832c24ee",
+      "displayName": "Date rangeでの合計使用額",
+      "query": "select * from `main`.`billing_forecast`.detailed_billing_forecast\nWHERE past_list_cost is not null"
+    },
+    {
+      "name": "85d00023",
+      "displayName": "$DBUの月別合計使用額",
+      "query": "select date_trunc('MONTH', date), sum(list_cost)\nfrom `main`.`billing_forecast`.detailed_billing_forecast\nWHERE past_list_cost is not null\nGROUP BY 1\nORDER By 1 desc"
+    },
+    {
+      "name": "9fba7e1a",
+      "displayName": "Volume creation",
+      "query": "-- Dashboard Name: DBSQL Governance Dashboard\n-- Report Name: Volume Types by Created Mont\n-- Query Name: dbsql-volume-types\nSELECT\n    volume_catalog,\n    volume_schema,\n    volume_type,\n    DATE_TRUNC('month', created) AS month_created,\n    COUNT(*) AS volume_count\nFROM\n    system.information_schema.volumes\nWHERE\n    volume_schema NOT IN ('information_schema')\nGROUP BY\n    volume_catalog,\n    volume_schema,\n    DATE_TRUNC('month', created),\n    volume_type\nORDER BY\n    month_created ASC,\n    volume_count DESC"
+    },
+    {
+      "name": "f3a8a537",
+      "displayName": "$DBUの来月使用予測額",
+      "query": "select date_trunc('MONTH', date) as month, sum(list_cost)\nfrom `main`.`billing_forecast`.detailed_billing_forecast \nwhere \ndate_trunc('MONTH', date) in (add_months(date_trunc('MONTH', now()),1), date_trunc('MONTH', now()))\nGROUP BY 1\nORDER By 1 desc"
+    },
+    {
+      "name": "f720ea13",
+      "displayName": "$DBUの次四半期使用予測額",
+      "query": "select sum(list_cost)\nfrom `main`.`billing_forecast`.detailed_billing_forecast \nWHERE date >= now() and date < add_months(now(), 3)"
+    }
+  ],
+  "pages": [
+    {
+      "name": "e34feaaf",
+      "displayName": "New Page",
+      "layout": [
+        {
+          "widget": {
+            "name": "019dd573",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f720ea13",
+                  "fields": [
+                    {
+                      "name": "sum(list_cost)",
+                      "expression": "`sum(list_cost)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(list_cost)",
+                  "rowNumber": 1,
+                  "displayName": "sum(list_cost)"
+                }
+              },
+              "frame": {
+                "title": "$DBUの次四半期使用予測額",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 9,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "075ec0ec",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1de0d444",
+                  "fields": [
+                    {
+                      "name": "schema_count",
+                      "expression": "`schema_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "schema_count",
+                  "rowNumber": 1,
+                  "displayName": "schema_count"
+                }
+              },
+              "frame": {
+                "title": "Schemas",
+                "showTitle": true,
+                "description": "Schemas",
+                "showDescription": false
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "0799191d",
+            "textbox_spec": "## テーブル/ボリューム\nUnity Catalogのシステムテーブルには、カタログ内に作成されたオブジェクトに関する情報も含まれています。"
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "18319061",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f3a8a537",
+                  "fields": [
+                    {
+                      "name": "sum(list_cost)",
+                      "expression": "`sum(list_cost)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(list_cost)",
+                  "rowNumber": 1,
+                  "displayName": "sum(list_cost)"
+                }
+              },
+              "frame": {
+                "title": "$DBUの来月使用予測額",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "3124a1f2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "45be5d04",
+                  "fields": [
+                    {
+                      "name": "daily(date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `date`)"
+                    },
+                    {
+                      "name": "sku",
+                      "expression": "`sku`"
+                    },
+                    {
+                      "name": "sum(cum_list_cost)",
+                      "expression": "SUM(`cum_list_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "date"
+                },
+                "y": {
+                  "fieldName": "sum(cum_list_cost)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of cum_list_cost"
+                },
+                "color": {
+                  "fieldName": "sku",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Today",
+                        "color": "#000000"
+                      }
+                    ]
+                  },
+                  "legend": {
+                    "hideTitle": false
+                  },
+                  "displayName": "sku"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "ワークスペースの累積$DBU使用量の合計"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 4,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "40207b19",
+            "queries": [
+              {
+                "name": "bee1ef744a534fc6a4c132d1b95b38a4",
+                "query": {
+                  "datasetName": "9fba7e1a",
+                  "fields": [
+                    {
+                      "name": "column_a44a939a9918",
+                      "expression": "COUNT(`volume_count`)"
+                    },
+                    {
+                      "name": "volume_type",
+                      "expression": "`volume_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 0,
+              "viz_spec": {
+                "display_name": "Volumes Created MoM",
+                "description": "",
+                "viz_type": "CHART",
+                "serialized_options": "{\"version\": 2, \"globalSeriesType\": \"pie\", \"sortX\": true, \"sortY\": true, \"legend\": {\"traceorder\": \"normal\"}, \"xAxis\": {\"type\": \"-\", \"labels\": {\"enabled\": true}}, \"yAxis\": [{\"type\": \"-\"}, {\"type\": \"-\", \"opposite\": true}], \"alignYAxesAtZero\": true, \"error_y\": {\"type\": \"data\", \"visible\": true}, \"series\": {\"stacking\": null, \"error_y\": {\"type\": \"data\", \"visible\": true}}, \"seriesOptions\": {\"column_a44a939a9918\": {\"yAxis\": 0, \"type\": \"pie\", \"name\": \"volume count\"}}, \"valuesOptions\": {}, \"direction\": {\"type\": \"counterclockwise\"}, \"sizemode\": \"diameter\", \"coefficient\": 1, \"numberFormat\": \"0,0[.]00000\", \"percentFormat\": \"0[.]00%\", \"textFormat\": \"\", \"missingValuesAsZero\": true, \"useAggregationsUi\": true, \"swappedAxes\": false, \"dateTimeFormat\": \"YYYY-MM-DD HH:mm:ss\", \"showDataLabels\": true, \"columnConfigurationMap\": {\"x\": {\"column\": \"volume_type\", \"id\": \"column_a44a939a9927\"}, \"y\": [{\"id\": \"column_a44a939a9918\", \"column\": \"volume_count\", \"transform\": \"COUNT\"}]}, \"isAggregationOn\": true, \"condensed\": true, \"withRowNumber\": true}",
+                "query_name": "bee1ef744a534fc6a4c132d1b95b38a4"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 15,
+            "width": 1,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "64512c43",
+            "textbox_spec": "# databricksのコスト分析\nこのダッシュボードは、システムテーブルのデータを使用して、過去の Databricks の使用状況を分析および監視し、将来の使用状況を予測します。\n\n**クエリーがレンダリングされない場合は、ノートブックが同じカタログ・スキーマで最初に実行されたことを確認してください**。  \n\n*このダッシュボードは教育/トレーニング目的でのみ提供されています。  \n価格等見積もり値であり、実際の契約値ではありません。"
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "6533f078",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1ff5a053",
+                  "fields": [
+                    {
+                      "name": "max(training_date)",
+                      "expression": "MAX(`training_date`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "target": {
+                  "fieldName": "max(training_date)",
+                  "displayName": "Maximum training_date"
+                }
+              },
+              "frame": {
+                "title": "最後の予測データ作成日",
+                "showTitle": true,
+                "description": "正確な予測のために毎日再トレーニングしてください",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "85b20498",
+            "queries": [
+              {
+                "name": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefcc7c6071463b843014bfc86cd01_date",
+                "query": {
+                  "datasetName": "832c24ee",
+                  "fields": [
+                    {
+                      "name": "date",
+                      "expression": "`date`"
+                    },
+                    {
+                      "name": "date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "date",
+                    "displayName": "date",
+                    "queryName": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefcc7c6071463b843014bfc86cd01_date"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Date range"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "8f0f8af5",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "85d00023",
+                  "fields": [
+                    {
+                      "name": "sum(list_cost)",
+                      "expression": "`sum(list_cost)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(list_cost)",
+                  "rowNumber": 2,
+                  "displayName": "sum(list_cost)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "$DBUの先月合計使用額"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "98ee38a6",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "2ff8c6ed",
+                  "fields": [
+                    {
+                      "name": "sum(table_count)",
+                      "expression": "SUM(`table_count`)"
+                    },
+                    {
+                      "name": "table_format",
+                      "expression": "`table_format`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "table_format",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "table_format"
+                },
+                "y": {
+                  "fieldName": "sum(table_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "table count"
+                }
+              },
+              "frame": {
+                "title": "format別のテーブル数",
+                "showTitle": true
+              },
+              "mark": {
+                "layout": "group"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 21,
+            "width": 2,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "b892ff06",
+            "queries": [
+              {
+                "name": "9b2fa0e697674776adae4f2379246756",
+                "query": {
+                  "datasetName": "6234253c",
+                  "fields": [
+                    {
+                      "name": "column_a44a939a7055",
+                      "expression": "COUNT(`table_catalog`)"
+                    },
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 0,
+              "viz_spec": {
+                "display_name": "table_type別の構成比率",
+                "description": "",
+                "viz_type": "CHART",
+                "serialized_options": "{\"version\": 2, \"globalSeriesType\": \"pie\", \"sortX\": true, \"sortY\": true, \"legend\": {\"traceorder\": \"normal\"}, \"xAxis\": {\"type\": \"-\", \"labels\": {\"enabled\": true}}, \"yAxis\": [{\"type\": \"-\"}, {\"type\": \"-\", \"opposite\": true}], \"alignYAxesAtZero\": true, \"error_y\": {\"type\": \"data\", \"visible\": true}, \"series\": {\"stacking\": null, \"error_y\": {\"type\": \"data\", \"visible\": true}}, \"seriesOptions\": {\"column_a44a939a7055\": {\"yAxis\": 0, \"type\": \"pie\", \"name\": \"Table count\"}}, \"valuesOptions\": {}, \"direction\": {\"type\": \"counterclockwise\"}, \"sizemode\": \"diameter\", \"coefficient\": 1, \"numberFormat\": \"0,0[.]00000\", \"percentFormat\": \"0[.]00%\", \"textFormat\": \"\", \"missingValuesAsZero\": true, \"useAggregationsUi\": true, \"swappedAxes\": false, \"dateTimeFormat\": \"YYYY-MM-DD HH:mm:ss\", \"showDataLabels\": true, \"columnConfigurationMap\": {\"x\": {\"column\": \"table_type\", \"id\": \"column_a44a939a7056\"}, \"y\": [{\"id\": \"column_a44a939a7055\", \"column\": \"table_catalog\", \"transform\": \"COUNT\"}]}, \"isAggregationOn\": true, \"condensed\": true, \"withRowNumber\": true}",
+                "query_name": "9b2fa0e697674776adae4f2379246756"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 3,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "c6a32d16",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "85d00023",
+                  "fields": [
+                    {
+                      "name": "sum(list_cost)",
+                      "expression": "`sum(list_cost)`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(list_cost)",
+                  "rowNumber": 1,
+                  "displayName": "sum(list_cost)"
+                }
+              },
+              "frame": {
+                "title": "$DBUの今月合計使用額",
+                "showTitle": true,
+                "description": "月初から今日まで",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 5,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c7467830",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "832c24ee",
+                  "fields": [
+                    {
+                      "name": "sum(list_cost)",
+                      "expression": "SUM(`list_cost`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(list_cost)",
+                  "displayName": "Sum of list_cost"
+                }
+              },
+              "frame": {
+                "title": "$DBUの合計使用額",
+                "showTitle": true,
+                "description": "Date rangeでの合計使用額",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 1,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "cae82a83",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1de0d444",
+                  "fields": [
+                    {
+                      "name": "catalog_count",
+                      "expression": "`catalog_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "catalog_count",
+                  "rowNumber": 1,
+                  "displayName": "catalog_count"
+                }
+              },
+              "frame": {
+                "title": "Catalogs",
+                "showTitle": true,
+                "description": "Catalogs",
+                "showDescription": false
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 15,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "ea120b97",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1de0d444",
+                  "fields": [
+                    {
+                      "name": "table_count",
+                      "expression": "`table_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "table_count",
+                  "rowNumber": 1,
+                  "displayName": "table_count"
+                }
+              },
+              "frame": {
+                "title": "Tables",
+                "showTitle": true,
+                "description": "Tables",
+                "showDescription": false
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 15,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "f0ed4ced",
+            "queries": [
+              {
+                "name": "bee1ef744a534fc6a4c132d1b95b38a4",
+                "query": {
+                  "datasetName": "9fba7e1a",
+                  "fields": [
+                    {
+                      "name": "column_a44a939a9445",
+                      "expression": "DATE_TRUNC(\"MONTH\", `month_created`)"
+                    },
+                    {
+                      "name": "column_a44a939a9447",
+                      "expression": "SUM(`volume_count`)"
+                    },
+                    {
+                      "name": "volume_type",
+                      "expression": "`volume_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 0,
+              "viz_spec": {
+                "display_name": "Volumes Created MoM",
+                "description": "",
+                "viz_type": "CHART",
+                "serialized_options": "{\"version\": 2, \"globalSeriesType\": \"area\", \"sortX\": true, \"sortY\": true, \"legend\": {\"traceorder\": \"normal\", \"enabled\": true, \"placement\": \"below\"}, \"xAxis\": {\"type\": \"-\", \"labels\": {\"enabled\": true}}, \"yAxis\": [{\"type\": \"-\", \"title\": {\"text\": \"Volume count\"}}, {\"type\": \"-\", \"opposite\": true}], \"alignYAxesAtZero\": true, \"error_y\": {\"type\": \"data\", \"visible\": true}, \"series\": {\"stacking\": \"stack\", \"error_y\": {\"type\": \"data\", \"visible\": true}}, \"seriesOptions\": {\"column_a44a939a9447\": {\"yAxis\": 0, \"type\": \"area\"}}, \"valuesOptions\": {}, \"direction\": {\"type\": \"counterclockwise\"}, \"sizemode\": \"diameter\", \"coefficient\": 1, \"numberFormat\": \"0,0[.]00000\", \"percentFormat\": \"0[.]00%\", \"textFormat\": \"\", \"missingValuesAsZero\": true, \"useAggregationsUi\": true, \"swappedAxes\": false, \"dateTimeFormat\": \"YYYY-MM-DD HH:mm:ss\", \"showDataLabels\": false, \"columnConfigurationMap\": {\"x\": {\"column\": \"month_created\", \"transform\": \"MONTH_LEVEL\", \"id\": \"column_a44a939a9445\"}, \"y\": [{\"id\": \"column_a44a939a9447\", \"column\": \"volume_count\", \"transform\": \"SUM\"}], \"series\": {\"column\": \"volume_type\", \"id\": \"column_a44a939a9448\"}}, \"isAggregationOn\": true, \"condensed\": true, \"withRowNumber\": true}",
+                "query_name": "bee1ef744a534fc6a4c132d1b95b38a4"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 15,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "f5d563ff",
+            "queries": [
+              {
+                "name": "9b2fa0e697674776adae4f2379246756",
+                "query": {
+                  "datasetName": "6234253c",
+                  "fields": [
+                    {
+                      "name": "column_a44a939a2996",
+                      "expression": "SUM(`table_count`)"
+                    },
+                    {
+                      "name": "column_a44a939a2997",
+                      "expression": "DATE_TRUNC(\"MONTH\", `month_created`)"
+                    },
+                    {
+                      "name": "table_type",
+                      "expression": "`table_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 0,
+              "viz_spec": {
+                "display_name": "Tables Created (MoM)",
+                "description": "",
+                "viz_type": "CHART",
+                "serialized_options": "{\"version\": 2, \"globalSeriesType\": \"area\", \"sortX\": true, \"sortY\": true, \"legend\": {\"traceorder\": \"normal\", \"enabled\": true, \"placement\": \"below\"}, \"xAxis\": {\"type\": \"-\", \"labels\": {\"enabled\": true}}, \"yAxis\": [{\"type\": \"-\"}, {\"type\": \"-\", \"opposite\": true}], \"alignYAxesAtZero\": true, \"error_y\": {\"type\": \"data\", \"visible\": true}, \"series\": {\"stacking\": \"stack\", \"error_y\": {\"type\": \"data\", \"visible\": true}}, \"seriesOptions\": {\"column_a44a939a2996\": {\"yAxis\": 0, \"type\": \"area\"}}, \"valuesOptions\": {}, \"direction\": {\"type\": \"counterclockwise\"}, \"sizemode\": \"diameter\", \"coefficient\": 1, \"numberFormat\": \"0,0[.]00000\", \"percentFormat\": \"0[.]00%\", \"textFormat\": \"\", \"missingValuesAsZero\": true, \"useAggregationsUi\": true, \"swappedAxes\": false, \"dateTimeFormat\": \"YYYY-MM-DD HH:mm:ss\", \"showDataLabels\": false, \"columnConfigurationMap\": {\"x\": {\"column\": \"month_created\", \"transform\": \"MONTH_LEVEL\", \"id\": \"column_a44a939a2997\"}, \"y\": [{\"id\": \"column_a44a939a2996\", \"column\": \"table_count\", \"transform\": \"SUM\"}], \"series\": {\"column\": \"table_type\", \"id\": \"column_a44a939a2998\"}}, \"isAggregationOn\": true}",
+                "query_name": "9b2fa0e697674776adae4f2379246756"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 21,
+            "width": 1,
+            "height": 7
+          }
+        }
+      ]
+    }
+  ]
+}
