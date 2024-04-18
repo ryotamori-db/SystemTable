@@ -1,11 +1,6 @@
 {
   "datasets": [
     {
-      "name": "008f0475",
-      "displayName": "Date rangeでの合計使用額",
-      "query": "select * from `main`.`billing_forecast`.detailed_billing_forecast\nWHERE past_list_cost is not null"
-    },
-    {
       "name": "4c8d9983",
       "displayName": "ボリューム作成数",
       "query": "-- Dashboard Name: DBSQL Governance Dashboard\n-- Report Name: Volume Types by Created Mont\n-- Query Name: dbsql-volume-types\nSELECT\n    volume_catalog,\n    volume_schema,\n    volume_type,\n    DATE_TRUNC('month', created) AS month_created,\n    COUNT(*) AS volume_count\nFROM\n    system.information_schema.volumes\nWHERE\n    volume_schema NOT IN ('information_schema')\nGROUP BY\n    volume_catalog,\n    volume_schema,\n    DATE_TRUNC('month', created),\n    volume_type\nORDER BY\n    month_created ASC,\n    volume_count DESC"
@@ -156,6 +151,9 @@
                     "hideTitle": false
                   },
                   "displayName": "sku"
+                },
+                "label": {
+                  "show": false
                 }
               },
               "frame": {
@@ -312,48 +310,6 @@
         },
         {
           "widget": {
-            "name": "479f7364",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "008f0475",
-                  "fields": [
-                    {
-                      "name": "sum(list_cost)",
-                      "expression": "SUM(`list_cost`)"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 2,
-              "widgetType": "counter",
-              "encodings": {
-                "value": {
-                  "fieldName": "sum(list_cost)",
-                  "displayName": "Sum of list_cost"
-                }
-              },
-              "frame": {
-                "title": "$DBUの合計使用額",
-                "showTitle": true,
-                "description": "Date rangeでの合計使用額",
-                "showDescription": true
-              }
-            }
-          },
-          "position": {
-            "x": 5,
-            "y": 1,
-            "width": 1,
-            "height": 4
-          }
-        },
-        {
-          "widget": {
             "name": "493bce4b",
             "queries": [
               {
@@ -477,12 +433,59 @@
         },
         {
           "widget": {
+            "name": "5d7c4aac",
+            "queries": [
+              {
+                "name": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefccd67db1ca78eb49783307980b4_sku",
+                "query": {
+                  "datasetName": "d8f8f75d",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "expression": "`sku`"
+                    },
+                    {
+                      "name": "sku_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "sku",
+                    "displayName": "sku",
+                    "queryName": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefccd67db1ca78eb49783307980b4_sku"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "SKU"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
             "name": "6667e01d",
             "queries": [
               {
-                "name": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefcc7c6071463b843014bfc86cd01_date",
+                "name": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefccd67db1ca78eb49783307980b4_date",
                 "query": {
-                  "datasetName": "008f0475",
+                  "datasetName": "d8f8f75d",
                   "fields": [
                     {
                       "name": "date",
@@ -505,7 +508,7 @@
                   {
                     "fieldName": "date",
                     "displayName": "date",
-                    "queryName": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefcc7c6071463b843014bfc86cd01_date"
+                    "queryName": "dashboards/01eefca5f76910c0b184f131317b74cb/datasets/01eefccd67db1ca78eb49783307980b4_date"
                   }
                 ]
               },
@@ -517,8 +520,8 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
-            "width": 2,
+            "y": 4,
+            "width": 3,
             "height": 1
           }
         },
@@ -570,7 +573,7 @@
           },
           "position": {
             "x": 0,
-            "y": 1,
+            "y": 0,
             "width": 4,
             "height": 4
           }
@@ -597,7 +600,7 @@
               "version": 2,
               "widgetType": "counter",
               "encodings": {
-                "target": {
+                "value": {
                   "fieldName": "max(training_date)",
                   "displayName": "Maximum training_date"
                 }
@@ -612,8 +615,8 @@
           },
           "position": {
             "x": 4,
-            "y": 1,
-            "width": 1,
+            "y": 0,
+            "width": 2,
             "height": 4
           }
         },
