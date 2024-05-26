@@ -6,15 +6,21 @@
 
 # COMMAND ----------
 
-dbutils.widgets.dropdown("reset_all_data", "false", ["true", "false"], "Reset all data")
-dbutils.widgets.text("min_dbr_version", "9.1", "Min required DBR version")
-#Empty value will try default: dbdemos with a fallback to hive_metastore
-#Specifying a value will not have fallback and fail if the catalog can't be used/created
-dbutils.widgets.text("catalog", "", "Catalog")
-#Empty value will be set to a database scoped to the current user using db_prefix
-dbutils.widgets.text("db", "", "Database")
-#ignored if db is set (we force the databse to the given value in this case)
-dbutils.widgets.text("db_prefix", "main", "Database prefix")
+# dbutils.widgets.dropdown("reset_all_data", "false", ["true", "false"], "Reset all data")
+# dbutils.widgets.text("min_dbr_version", "9.1", "Min required DBR version")
+# #Empty value will try default: dbdemos with a fallback to hive_metastore
+# #Specifying a value will not have fallback and fail if the catalog can't be used/created
+# dbutils.widgets.text("catalog", "", "Catalog")
+# #Empty value will be set to a database scoped to the current user using db_prefix
+# dbutils.widgets.text("db", "", "Database")
+# #ignored if db is set (we force the databse to the given value in this case)
+# dbutils.widgets.text("db_prefix", "main", "Database prefix")
+
+reset_all_data = True
+min_dbr_version = '9.1'
+catalog = 'dbdemos'
+db = 'billing_forecast'
+db_prefix = 'main'
 
 # COMMAND ----------
 
@@ -101,18 +107,18 @@ else:
   current_user_no_at = current_user
 current_user_no_at = re.sub(r'\W+', '_', current_user_no_at)
 
-db = dbutils.widgets.get("db")
-db_prefix = dbutils.widgets.get("db_prefix")
+# db = dbutils.widgets.get("db")
+# db_prefix = dbutils.widgets.get("db_prefix")
 if len(db) == 0:
   dbName = db_prefix+"_"+current_user_no_at
 else:
   dbName = db
   
 cloud_storage_path = f"/Users/{current_user}/demos/{db_prefix}"
-reset_all = dbutils.widgets.get("reset_all_data") == "true"
+reset_all = reset_all_data
 
 #Try to use the UC catalog "dbdemos" when possible. IF not will fallback to hive_metastore
-catalog = dbutils.widgets.get("catalog")
+# catalog = dbutils.widgets.get("catalog")
 
 def use_and_create_db(catalog, dbName, cloud_storage_path = None):
   print(f"USE CATALOG `{catalog}`")
