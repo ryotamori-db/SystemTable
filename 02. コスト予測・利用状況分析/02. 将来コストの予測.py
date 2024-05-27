@@ -25,15 +25,15 @@
 
 # COMMAND ----------
 
-catalog = 'main'
+catalog = 'dbdemos'
 schema = 'billing_forecast'
 
-dbutils.widgets.text('catalog', catalog)
-dbutils.widgets.text('schema', schema)
+# dbutils.widgets.text('catalog', catalog)
+# dbutils.widgets.text('schema', schema)
 
 # COMMAND ----------
 
-# MAGIC %run "../01. システムテーブルとは/_resources/00-setup" $reset_all_data=reset_all_data
+# MAGIC %run "../01. システムテーブルとは/_resources/00-setup" $reset_all_data=True
 
 # COMMAND ----------
 
